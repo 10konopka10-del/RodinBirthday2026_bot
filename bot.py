@@ -15,18 +15,24 @@ START_COUNT = 10
 def get_keyboard(count: int):
     buttons = []
 
-    # кнопка заказа только если есть минты
+    # кнопка заказа минтов
     if count > 0:
         buttons.append(
             [InlineKeyboardButton("🍽 Заказать минт", callback_data="order")]
         )
 
-    return InlineKeyboardMarkup(buttons) if buttons else None
+    # кнопка покупки ВСЕГДА есть
+    buttons.append(
+        [InlineKeyboardButton("🍷 Купить дополнительные услуги", callback_data="buy_more")]
+
+    )
+
+    return InlineKeyboardMarkup(buttons)
 
 
 def get_final_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🍷 Купить ещё", callback_data="buy_more")]
+        [InlineKeyboardButton("🍷 Купить дополнительные услуги", callback_data="buy_more")]
     ])
 
 
@@ -63,23 +69,25 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "order":
         if count <= 0:
             await query.message.reply_text("У вас больше не осталось минтов 😢")
+            await query.message.reply_text(
+                "Если хотите продолжить — нажмите кнопку ниже 👇",
+                reply_markup=get_final_keyboard()
+            )
             return
 
         count -= 1
         dinners[chat_id] = count
 
-        await query.message.reply_text(f"🍽 Минт заказан!")
+        await query.message.reply_text("🍽 Минт заказан!")
 
         if count > 0:
             await query.message.reply_text(f"Осталось минтов: {count}")
         else:
             await query.message.reply_text(
-                "У вас закончились все минты 🎉\n\n"
-                "Если хотите продолжить — нажмите кнопку ниже 👇",
-                reply_markup=get_final_keyboard()
+                "У вас закончились все минты 🎉"
             )
 
-    # покупка после окончания
+    # покупка услуг
     elif data == "buy_more":
         await query.message.reply_text(
             "🍷 Конечно можем договориться.\n"
