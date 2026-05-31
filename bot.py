@@ -12,23 +12,22 @@ dinners = {}
 START_COUNT = 10
 
 
-def get_keyboard(chat_id: int):
-    count = dinners.get(chat_id, START_COUNT)
-
+def get_keyboard(count: int):
     buttons = []
 
-    # кнопка заказа минта
+    # кнопка заказа только если есть минты
     if count > 0:
         buttons.append(
             [InlineKeyboardButton("🍽 Заказать минт", callback_data="order")]
         )
 
-    # кнопка "купить ещё"
-    buttons.append(
-        [InlineKeyboardButton("🍷 Купить ещё", callback_data="buy_more")]
-    )
+    return InlineKeyboardMarkup(buttons) if buttons else None
 
-    return InlineKeyboardMarkup(buttons)
+
+def get_final_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🍷 Купить ещё", callback_data="buy_more")]
+    ])
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -47,7 +46,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         text,
-        reply_markup=get_keyboard(chat_id)
+        reply_markup=get_keyboard(dinners[chat_id])
     )
 
 
@@ -60,35 +59,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     count = dinners.get(chat_id, START_COUNT)
 
+    # заказ минта
     if data == "order":
         if count <= 0:
-            await query.edit_message_text(
-                "У вас больше не осталось минтов 😢",
-                reply_markup=get_keyboard(chat_id)
-            )
+            await query.message.reply_text("У вас больше не осталось минтов 😢")
             return
 
         count -= 1
         dinners[chat_id] = count
 
+        await query.message.reply_text(f"🍽 Минт заказан!")
+
         if count > 0:
-            text = (
-                f"🍽 Минт заказан!\n"
-                f"Осталось минтов: {count}"
-            )
+            await query.message.reply_text(f"Осталось минтов: {count}")
         else:
-            text = (
-                "🍽 Минт заказан!\n\n"
-                "У вас закончились все минты 🎉"
+            await query.message.reply_text(
+                "У вас закончились все минты 🎉\n\n"
+                "Если хотите продолжить — нажмите кнопку ниже 👇",
+                reply_markup=get_final_keyboard()
             )
 
-        await query.edit_message_text(
-            text,
-            reply_markup=get_keyboard(chat_id)
-        )
-
+    # покупка после окончания
     elif data == "buy_more":
-        await query.answer()
         await query.message.reply_text(
             "🍷 Конечно можем договориться.\n"
             "Напишите нам, и мы обсудим детали 😉"
